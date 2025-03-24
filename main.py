@@ -2,10 +2,9 @@
 import os
 import subprocess
 import urllib.parse
-import re
 import configparser
-from bs4 import BeautifulSoup
-from helpers import is_probably_url, normalize_html, check_attrs, php_rename, fix_query_strings, pretty_print
+from helpers import normalize_html, check_attrs, php_rename, fix_query_strings, pretty_print
+from php_refactor import extract_php_includes
 from prompt_toolkit.shortcuts import input_dialog
 from prompt_toolkit.shortcuts import checkboxlist_dialog
 
@@ -54,7 +53,8 @@ def main():
             ("fix-query", "Correggi i nomi dei file con query string"),
             ("normalize-html", "Correggi codice e rinomina i file in .html"),
             ("php-rename", "Rinomina i file .html in .php"),
-            ("pretty-print", "Formatta il codice HTML/PHP/ASP con indentazione")
+            ("pretty-print", "Formatta il codice HTML/PHP/ASP con indentazione"),
+            ("php-includes", "Estrai blocchi comuni in file PHP include")
         ]
     ).run()
 
@@ -69,6 +69,34 @@ def main():
             title='Dominio',
             text="Elenca gli attributi aggiuntivi in cui cercare risorse, separati da virgole. (es data-src,data-attr)",
             default=attrs).run()
+    
+    # PHP includes options
+    php_includes_options = {}
+    if options and 'php-includes' in options:
+        if config.has_section('PHP_Includes'):
+            php_includes_options = {
+                'min_block_size': config.getint('PHP_Includes', 'min_block_size', fallback=50),
+                'similarity_threshold': config.getfloat('PHP_Includes', 'similarity_threshold', fallback=0.9),
+                'min_occurrences': config.getint('PHP_Includes', 'min_occurrences', fallback=2)
+            }
+        else:
+            min_block_size = input_dialog(
+                title='Dimensione minima blocco',
+                text="Dimensione minima in caratteri per considerare un blocco (default: 50)",
+                default="50").run()
+            php_includes_options['min_block_size'] = int(min_block_size) if min_block_size else 50
+            
+            similarity_threshold = input_dialog(
+                title='Soglia di similarità',
+                text="Soglia per considerare blocchi simili (0.0-1.0). Un valore di 1.0 significa identici, 0.9 significa 90% simili (default: 0.9)",
+                default="0.9").run()
+            php_includes_options['similarity_threshold'] = float(similarity_threshold) if similarity_threshold else 0.9
+            
+            min_occurrences = input_dialog(
+                title='Occorrenze minime',
+                text="Numero minimo di occorrenze per estrarre un blocco (default: 2)",
+                default="2").run()
+            php_includes_options['min_occurrences'] = int(min_occurrences) if min_occurrences else 2
 
     for domain in domains:
 
@@ -118,6 +146,18 @@ def main():
 
             if "pretty-print" in options:
                 pretty_print(domain, download_path)
+                
+            if "php-includes" in options:
+                extract_php_includes(
+                    domain, 
+                    os.path.join(mirror_path, download_dir),
+                    min_block_size=php_includes_options.get('min_block_size', 50),
+                    similarity_threshold=php_includes_options.get('similarity_threshold', 0.9),
+                    min_occurrences=php_includes_options.get('min_occurrences', 2),
+                    debug=True  # Enable debug mode
+                )
+                if "pretty-print" in options:
+                    pretty_print(domain, download_path)
 
 
 if __name__ == '__main__':
