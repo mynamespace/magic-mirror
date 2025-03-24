@@ -1,0 +1,7 @@
+beautifulsoup4==4.13.3
+configparser==7.2.0
+prompt_toolkit==3.0.50
+soupsieve==2.6
+typing_extensions==4.12.2
+urllib3==2.3.0
+wcwidth==0.2.13
