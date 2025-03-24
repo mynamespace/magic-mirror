@@ -17,17 +17,18 @@ def main():
     mirror_path = config.get('DEFAULT', 'mirror_path', fallback='.')
 
     domains = []
-    if os.path.exists("domains.txt"):
-        available_domains = []
-        with open('domains.txt', 'r') as file:
-            for line in file:
-                available_domains.append(line.strip())
-            if available_domains:
-                domains = checkboxlist_dialog(
-                    title="Dominio",
-                    ok_text="Procedi",
-                    cancel_text="Annulla",
-                    text="Scegli uno o più domini",
+    domains_config = config.get('domains', 'domains_to_mirror', fallback='')
+    
+    available_domains = []
+    if domains_config:
+        available_domains = domains_config.split(',')
+    
+    if available_domains:
+        domains = checkboxlist_dialog(
+            title="Dominio",
+            ok_text="Procedi",
+            cancel_text="Annulla",
+            text="Scegli uno o più domini",
                 values=[(d, d) for d in available_domains]).run()
 
     if not domains or len(domains) == 0:

@@ -1,3 +1,5 @@
 mirrors/
 __pycache__/
 env/
+config.ini
+.vscode/
