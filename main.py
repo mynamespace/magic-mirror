@@ -5,7 +5,7 @@ import urllib.parse
 import re
 import configparser
 from bs4 import BeautifulSoup
-from helpers import is_probably_url, normalize_html, check_attrs, php_rename, fix_query_strings
+from helpers import is_probably_url, normalize_html, check_attrs, php_rename, fix_query_strings, pretty_print
 from prompt_toolkit.shortcuts import input_dialog
 from prompt_toolkit.shortcuts import checkboxlist_dialog
 
@@ -52,7 +52,8 @@ def main():
             ("check-attrs", "Cerca risorse aggiuntive negli attributi"),
             ("fix-query", "Correggi i nomi dei file con query string"),
             ("normalize-html", "Correggi codice e rinomina i file in .html"),
-            ("php-rename", "Rinomina i file .html in .php")
+            ("php-rename", "Rinomina i file .html in .php"),
+            ("pretty-print", "Formatta il codice HTML/PHP/ASP con indentazione")
         ]
     ).run()
 
@@ -113,6 +114,9 @@ def main():
 
             if "php-rename" in options:
                 php_rename(domain, download_path)
+
+            if "pretty-print" in options:
+                pretty_print(domain, download_path)
 
 
 if __name__ == '__main__':

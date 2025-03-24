@@ -262,8 +262,17 @@ def normalize_html(domain: str, download_dir: str):
                                             tag[attr_name] = new_value
 
                                 if modified:
+                                    html_content = str(soup)
+                                    # List of void elements that should be self-closing
+                                    void_elements = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 
+                                                    'link', 'meta', 'param', 'source', 'track', 'wbr']
+                                    
+                                    # Remove incorrect closing tags
+                                    for tag in void_elements:
+                                        html_content = re.sub(f'</{tag}>', '', html_content)
+                                    
                                     with open(html_path, 'w', encoding='utf-8') as f:
-                                        f.write(str(soup))
+                                        f.write(html_content)
                             except Exception as e:
                                 print(
                                     f"Error processing {html_path}: {str(e)}")
@@ -345,3 +354,59 @@ def php_rename(domain: str, download_dir: str):
                 old_path = os.path.join(root, file)
                 new_path = os.path.join(root, file[:-5] + '.php')
                 os.rename(old_path, new_path)
+
+
+def pretty_print(domain: str, download_dir: str):
+    """
+    Applies pretty printing to HTML, PHP, and ASP files in the downloaded directory.
+    This reformats the HTML content to be more readable with proper indentation.
+    
+    Args:
+        domain (str): The website domain (not used in current implementation)
+        download_dir (str): Directory containing the downloaded website files
+    """
+    print(f"Applying pretty print to files in {download_dir}...")
+    
+    # Keep track of processed files
+    processed_files = 0
+    
+    # Process all HTML, PHP, and ASP files
+    for root, dirs, files in os.walk(download_dir):
+        for file in files:
+            if file.endswith(('.html', '.php', '.asp', '.asp.html', '.php.html')):
+                file_path = os.path.join(root, file)
+                try:
+                    # Read the file content
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    
+                    # Parse with BeautifulSoup using lxml parser if available, otherwise html.parser
+                    try:
+                        soup = BeautifulSoup(content, 'lxml')
+                    except:
+                        soup = BeautifulSoup(content, 'html.parser')
+                    
+                    # Pretty print the content
+                    pretty_content = soup.prettify()
+                    
+                    # Fix self-closing tags that BeautifulSoup might have incorrectly formatted
+                    # List of void elements that should be self-closing
+                    void_elements = ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 
+                                    'link', 'meta', 'param', 'source', 'track', 'wbr']
+                    
+                    # Remove incorrect closing tags
+                    for tag in void_elements:
+                        pretty_content = re.sub(f'</{tag}>', '', pretty_content)
+                    
+                    # Write back the formatted content
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(pretty_content)
+                    
+                    processed_files += 1
+                    if processed_files % 50 == 0:
+                        print(f"Processed {processed_files} files...")
+                        
+                except Exception as e:
+                    print(f"Error processing {file_path}: {e}")
+    
+    print(f"Pretty print completed. Processed {processed_files} files.")
