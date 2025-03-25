@@ -10,7 +10,7 @@ def is_probably_url(value: str) -> bool:
     Restituisce True se:
       - non contiene spazi e
       - inizia con "http://", "https://", "/", "./", "../"
-        oppure contiene una barra "/" oppure termina con .html (inclusi .asp.html/.php.html).
+        oppure contiene una barra "/" oppure termina con comuni estensioni web (.html, .asp, .php, etc.).
     Altrimenti restituisce False.
     """
     if not value or ' ' in value:
@@ -23,6 +23,9 @@ def is_probably_url(value: str) -> bool:
         return True
     if "/" in value:
         return True
+    # Check for common web file extensions
+    if re.search(r'\.(html|htm|asp|php|jsp|aspx|do|cgi)$', value, flags=re.IGNORECASE):
+        return True
     if re.search(r'\.(asp|php)\.html$', value, flags=re.IGNORECASE) or re.search(r'\.html$', value, flags=re.IGNORECASE):
         return True
     return False
@@ -31,6 +34,7 @@ def check_attrs(domain: str, download_dir: str, attrs: str) -> set:
     """
     Checks for URLs in specified attributes of HTML files and adds them to the list of extra URLs.
     Also transforms absolute URLs that include the current domain into site-relative URLs.
+    Also extracts URLs hidden in JavaScript code within attributes like onclick="location.href='url'".
 
     Args:
         domain (str): The website domain (e.g., 'https://example.com')
@@ -49,17 +53,36 @@ def check_attrs(domain: str, download_dir: str, attrs: str) -> set:
     
     print(f"Checking attributes {attrs_to_search} in {download_dir}...")
     
+    # Regular expression to find URLs in JavaScript code like location.href='url'
+    location_href_pattern = re.compile(r"location\.href\s*=\s*['\"]([^'\"]+)['\"]")
+    
     for root, dirs, files in os.walk(download_dir):
         for file in files:
             if file.endswith((".html", ".php", ".asp")):
                 file_path = os.path.join(root, file)
                 modified = False
+                
+                # Calculate the relative path from download_dir to the current file
+                rel_path = os.path.relpath(file_path, download_dir)
+                # Convert Windows path separators to URL path separators if needed
+                rel_path = rel_path.replace(os.path.sep, '/')
+                # Remove the filename to get the directory
+                rel_dir = os.path.dirname(rel_path)
+                
+                # Construct the base URL for this file (for resolving relative URLs)
+                if rel_dir:
+                    file_base_url = f"{domain}/{rel_dir}/"
+                else:
+                    file_base_url = f"{domain}/"
+                
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     soup = BeautifulSoup(f, "html.parser")
                     for tag in soup.find_all():
                         for attr, value in tag.attrs.items():
                             if attr in attrs_to_search and isinstance(value, str):
                                 print(f"Checking attribute {attr} in {file_path}, value: {value}...")
+                                
+                                # Check for direct URLs in attribute values
                                 if is_probably_url(value):
                                     # Add to extra URLs for downloading
                                     absolute_url = urllib.parse.urljoin(domain, value)
@@ -78,10 +101,39 @@ def check_attrs(domain: str, download_dir: str, attrs: str) -> set:
                                         # Update the attribute value
                                         tag[attr] = site_relative_url
                                         modified = True
+                                
+                                # Check for URLs hidden in JavaScript code (like onclick="location.href='url'")
+                                href_matches = location_href_pattern.findall(value)
+                                for href in href_matches:
+                                    print(f"Found location.href URL in {attr}: {href}")
+                                    if is_probably_url(href):
+                                        # Use the file's base URL to resolve relative URLs properly
+                                        absolute_url = urllib.parse.urljoin(file_base_url, href)
+                                        extra_urls.add(absolute_url)
+                                        print(f"  Resolved to: {absolute_url}")
+                                        
+                                        # If the URL is on the same domain, convert it to site-relative
+                                        if absolute_url.startswith(domain_base):
+                                            # Extract the path part and make it site-relative
+                                            parsed_url = urllib.parse.urlparse(absolute_url)
+                                            site_relative_url = parsed_url.path
+                                            if parsed_url.query:
+                                                site_relative_url += "?" + parsed_url.query
+                                            if parsed_url.fragment:
+                                                site_relative_url += "#" + parsed_url.fragment
+                                                
+                                            # Replace the URL in the JavaScript code with the site-relative URL
+                                            new_value = value.replace(f"location.href='{href}'", f"location.href='{site_relative_url}'")
+                                            new_value = new_value.replace(f'location.href="{href}"', f'location.href="{site_relative_url}"')
+                                            
+                                            if new_value != value:
+                                                tag[attr] = new_value
+                                                modified = True
+                                                print(f"  Updated to use site-relative URL: {site_relative_url}")
                 
                 # Save the file only if modifications were made
                 if modified:
-                    with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
+                    with open(file_path, "w", encoding="utf-8") as f:
                         f.write(str(soup))
     
     return extra_urls
