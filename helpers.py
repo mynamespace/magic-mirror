@@ -3,20 +3,63 @@ import re
 import os
 from bs4 import BeautifulSoup
 
+def fix_query_strings(domain: str, download_dir: str):
+    """
+    Cleans up files with query strings in their names by removing the '@' and subsequent characters.
+    For example, 'page@param=value.html' becomes 'page.html'. Also updates all references to these
+    files in HTML and CSS files to maintain link integrity.
+
+    If a "clean" version of a file already exists, the one with query strings is deleted instead
+    of being renamed.
+
+    Args:
+        domain (str): The website domain (not used in current implementation)
+        download_dir (str): Directory containing the downloaded website files
+    """
+    # fix_mapping: map (relative old name with '@' -> new name "clean")
+    fix_mapping = {}
+    for root, dirs, files in os.walk(download_dir):
+        for file in files:
+            if "@" in file:
+                old_full_path = os.path.join(root, file)
+                # New name: take the part before the '@'
+                new_file_name = file.split("@")[0]
+                new_full_path = os.path.join(root, new_file_name)
+                # If a "clean" version of the file already exists, delete the one with '@'
+                if os.path.exists(new_full_path):
+                    os.remove(old_full_path)
+                else:
+                    os.rename(old_full_path, new_full_path)
+                # Save only the old and new names (without the path)
+                fix_mapping[file] = new_file_name
+
+    # Step 5: Correct references in files
+    for root, dirs, files in os.walk(download_dir):
+        for file in files:
+            if file.endswith(".html") or file.endswith(".css"):
+                file_path = os.path.join(root, file)
+                print(f"Processing {file_path}...")
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                # Replace each old reference with the new one
+                for old_ref, new_ref in fix_mapping.items():
+                    content = content.replace(old_ref, new_ref)
+                with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
+                    f.write(content)
 
 def is_probably_url(value: str) -> bool:
     """
-    Determina se una stringa sembra rappresentare un URL.
-    Restituisce True se:
-      - non contiene spazi e
-      - inizia con "http://", "https://", "/", "./", "../"
-        oppure contiene una barra "/" oppure termina con comuni estensioni web (.html, .asp, .php, etc.).
-    Altrimenti restituisce False.
+    Determines if a string appears to represent a URL.
+    Returns True if:
+      - it doesn't contain spaces and
+      - starts with "http://", "https://", "/", "./", "../"
+        or contains a slash "/" or ends with common web extensions (.html, .asp, .php, etc.).
+    Otherwise returns False.
     """
     if not value or ' ' in value:
         return False
     parsed = urllib.parse.urlparse(value)
-    # Se è un URL assoluto (ha uno schema) ritorna True.
+    # If it's an absolute URL (has a scheme) return True.
     if parsed.scheme:
         return True
     if value.startswith(("//", "http://", "https://", "/", "./", "../")):
@@ -137,50 +180,6 @@ def check_attrs(domain: str, download_dir: str, attrs: str) -> set:
                         f.write(str(soup))
     
     return extra_urls
-
-def fix_query_strings(domain: str, download_dir: str):
-    """
-    Cleans up files with query strings in their names by removing the '@' and subsequent characters.
-    For example, 'page@param=value.html' becomes 'page.html'. Also updates all references to these
-    files in HTML and CSS files to maintain link integrity.
-
-    If a "clean" version of a file already exists, the one with query strings is deleted instead
-    of being renamed.
-
-    Args:
-        domain (str): The website domain (not used in current implementation)
-        download_dir (str): Directory containing the downloaded website files
-    """
-    # fix_mapping: mappa (relativo vecchio nome con '@' -> nuovo nome "pulito")
-    fix_mapping = {}
-    for root, dirs, files in os.walk(download_dir):
-        for file in files:
-            if "@" in file:
-                old_full_path = os.path.join(root, file)
-                # Nuovo nome: prendi la parte prima della '@'
-                new_file_name = file.split("@")[0]
-                new_full_path = os.path.join(root, new_file_name)
-                # Se esiste già il file "pulito", elimina quello con '@'
-                if os.path.exists(new_full_path):
-                    os.remove(old_full_path)
-                else:
-                    os.rename(old_full_path, new_full_path)
-                # Salva solo il nome vecchio e nuovo (senza il percorso)
-                fix_mapping[file] = new_file_name
-
-    # Step 5: Correggi i riferimenti nei file HTML
-    for root, dirs, files in os.walk(download_dir):
-        for file in files:
-            if file.endswith(".html") or file.endswith(".css"):
-                file_path = os.path.join(root, file)
-                print(f"Processing {file_path}...")
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-                # Sostituisci ogni riferimento vecchio con quello nuovo
-                for old_ref, new_ref in fix_mapping.items():
-                    content = content.replace(old_ref, new_ref)
-                with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
-                    f.write(content)
 
 def normalize_html(domain: str, download_dir: str):
     """

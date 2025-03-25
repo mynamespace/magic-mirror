@@ -2,4 +2,4 @@
 mirror_path = ./mirrors
 
 [domains]
-domainsToMirror=
+domains_to_mirror = 

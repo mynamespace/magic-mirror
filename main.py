@@ -25,19 +25,19 @@ def main():
     
     if available_domains:
         domains = checkboxlist_dialog(
-            title="Dominio",
-            ok_text="Procedi",
-            cancel_text="Annulla",
-            text="Scegli uno o più domini",
+            title="Domain",
+            ok_text="Proceed",
+            cancel_text="Cancel",
+            text="Choose one or more domains",
                 values=[(d, d) for d in available_domains]).run()
 
     if not domains or len(domains) == 0:
         domains = []
         domain = input_dialog(
-            title='Dominio',
-            ok_text="Procedi",
-            cancel_text="Annulla",
-            text="Inserisci l'indirizzo completo del sito (es. www.example.org)").run()
+            title='Domain',
+            ok_text="Proceed",
+            cancel_text="Cancel",
+            text="Enter the complete website address (e.g. www.example.org)").run()
         if domain:
             domains.append(domain)
 
@@ -45,18 +45,18 @@ def main():
         return
 
     options = checkboxlist_dialog(
-        title="Operazioni da eseguire",
-        ok_text="Procedi",
-        cancel_text="Annulla",
-        text=f"Cosa vuoi fare con {', '.join(domains)}?",
+        title="Operations to execute",
+        ok_text="Proceed",
+        cancel_text="Cancel",
+        text=f"What do you want to do with {', '.join(domains)}?",
         values=[
-            ("mirror", "Esegui il mirror"),
-            ("check-attrs", "Cerca risorse aggiuntive negli attributi"),
-            ("fix-query", "Correggi i nomi dei file con query string"),
-            ("normalize-html", "Correggi codice e rinomina i file in .html"),
-            ("php-rename", "Rinomina i file .html in .php"),
-            ("pretty-print", "Formatta il codice HTML/PHP/ASP con indentazione"),
-            ("php-includes", "Estrai blocchi comuni in file PHP include")
+            ("mirror", "Create a mirror"),
+            ("check-attrs", "Look for additional resources in attributes"),
+            ("fix-query", "Fix filenames with query strings"),
+            ("normalize-html", "Fix code and rename files to .html"),
+            ("php-rename", "Rename .html files to .php"),
+            ("pretty-print", "Format HTML/PHP/ASP code with indentation"),
+            ("php-includes", "Extract common blocks into PHP include files")
         ]
     ).run()
 
@@ -68,8 +68,8 @@ def main():
     if options and 'check-attrs' in options:
         option_check_attrs = True
         attrs = input_dialog(
-            title='Dominio',
-            text="Elenca gli attributi aggiuntivi in cui cercare risorse, separati da virgole. (es data-src,data-attr)",
+            title='Domain',
+            text="List additional attributes to search for resources, separated by commas. (e.g. data-src,data-attr)",
             default=attrs).run()
     
     # PHP includes options
@@ -83,26 +83,26 @@ def main():
             }
         else:
             min_block_size = input_dialog(
-                title='Dimensione minima blocco',
-                text="Dimensione minima in caratteri per considerare un blocco (default: 50)",
+                title='Minimum block size',
+                text="Minimum size in characters to consider a block (default: 50)",
                 default="50").run()
             php_includes_options['min_block_size'] = int(min_block_size) if min_block_size else 50
             
             similarity_threshold = input_dialog(
-                title='Soglia di similarità',
-                text="Soglia per considerare blocchi simili (0.0-1.0). Un valore di 1.0 significa identici, 0.9 significa 90% simili (default: 0.9)",
+                title='Similarity threshold',
+                text="Threshold for considering blocks similar (0.0-1.0). A value of 1.0 means identical, 0.9 means 90% similar (default: 0.9)",
                 default="0.9").run()
             php_includes_options['similarity_threshold'] = float(similarity_threshold) if similarity_threshold else 0.9
             
             min_occurrences = input_dialog(
-                title='Occorrenze minime',
-                text="Numero minimo di occorrenze per estrarre un blocco (default: 2)",
+                title='Minimum occurrences',
+                text="Minimum number of occurrences to extract a block (default: 2)",
                 default="2").run()
             php_includes_options['min_occurrences'] = int(min_occurrences) if min_occurrences else 2
 
     for domain in domains:
 
-        # Aggiunge https:// se lo schema non è presente
+        # Add https:// if the scheme is not present
         if not urllib.parse.urlparse(domain).scheme:
             domain = "https://" + domain
             base_url = domain
@@ -113,7 +113,7 @@ def main():
             download_path = os.path.join(mirror_path, download_dir)
 
             if 'mirror' in options:
-                # 1. Esecuzione iniziale di wget per mirroring del sito
+                # 1. Initial execution of wget for site mirroring
                 wget_cmd = [
                     "wget",
                     "--mirror",
