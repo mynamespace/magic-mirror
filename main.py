@@ -3,6 +3,7 @@ import os
 import subprocess
 import urllib.parse
 import configparser
+import re
 from helpers import normalize_html, check_attrs, php_rename, fix_query_strings, pretty_print
 from php_refactor import extract_php_includes
 from prompt_toolkit.shortcuts import input_dialog
@@ -129,13 +130,39 @@ def main():
             if option_check_attrs:
                 extra_urls = check_attrs(domain, download_path, attrs)
 
-                print(f"Url trovati: {extra_urls}...")
+                print(f"URLs found: {extra_urls}...")
 
-                # 3. Scarica le risorse aggiuntive mantenendo la struttura delle directory (-x)
+                # Separate URLs into page files and static resources
+                page_urls = set()
+                static_urls = set()
+                
                 for url in extra_urls:
+                    # Check if the URL points to a page file (HTML, ASP, PHP, etc.)
+                    if re.search(r'\.(html|htm|asp|php|jsp|aspx|do|cgi)(\?|$)', url, flags=re.IGNORECASE):
+                        page_urls.add(url)
+                    else:
+                        static_urls.add(url)
+                
+                # Download static resources with basic wget
+                for url in static_urls:
                     subprocess.run(["wget", "-x", "-P", mirror_path, url])
-
-            # Step 4: Se attivato, corregge i nomi dei file con query string
+                
+                # Download page files with more options similar to mirror mode
+                for url in page_urls:
+                    wget_cmd = [
+                        "wget",
+                        "--convert-links",
+                        "--adjust-extension",
+                        "--page-requisites",
+                        "--no-parent",
+                        "--restrict-file-names=ascii,windows",
+                        "-x",  # Keep directory structure
+                        "-P", mirror_path,
+                        url
+                    ]
+                    subprocess.run(wget_cmd)
+            
+            # Apply user options to all files, including both original and newly downloaded ones
             if 'fix-query' in options:
                 fix_query_strings(domain, download_path)
                 
@@ -144,10 +171,10 @@ def main():
 
             if "php-rename" in options:
                 php_rename(domain, download_path)
-
+                
             if "pretty-print" in options:
                 pretty_print(domain, download_path)
-                
+            
             if "php-includes" in options:
                 extract_php_includes(
                     domain, 
