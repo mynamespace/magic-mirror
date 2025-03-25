@@ -292,7 +292,7 @@ def php_rename(domain: str, download_dir: str):
     html_files = set()
     for root, dirs, files in os.walk(download_dir):
         for file in files:
-            if file.endswith('.html'):
+            if file.endswith(('.htm', '.html')):
                 html_files.add(file)
 
     # Second pass: update references in all HTML and PHP files
@@ -350,9 +350,11 @@ def php_rename(domain: str, download_dir: str):
     # Final pass: rename all HTML files to PHP
     for root, dirs, files in os.walk(download_dir):
         for file in files:
-            if file.endswith('.html'):
+            if file.endswith(('.htm', '.html')):
                 old_path = os.path.join(root, file)
-                new_path = os.path.join(root, file[:-5] + '.php')
+                # Use os.path.splitext to safely handle extensions of any length
+                filename, extension = os.path.splitext(file)
+                new_path = os.path.join(root, filename + '.php')
                 os.rename(old_path, new_path)
 
 
@@ -373,7 +375,7 @@ def pretty_print(domain: str, download_dir: str):
     # Process all HTML, PHP, and ASP files
     for root, dirs, files in os.walk(download_dir):
         for file in files:
-            if file.endswith(('.html', '.php', '.asp', '.asp.html', '.php.html')):
+            if file.endswith(('.htm', '.html', '.php', '.asp', '.asp.html', '.php.html')):
                 file_path = os.path.join(root, file)
                 try:
                     # Read the file content

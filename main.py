@@ -31,6 +31,7 @@ def main():
                 values=[(d, d) for d in available_domains]).run()
 
     if not domains or len(domains) == 0:
+        domains = []
         domain = input_dialog(
             title='Dominio',
             ok_text="Procedi",
